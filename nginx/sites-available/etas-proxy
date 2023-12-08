@@ -1,0 +1,133 @@
+upstream  upstream_etas {
+	server www.etas.com:443;
+}
+upstream  upstream_etas_license {
+	server license.etas.com:443;
+}
+
+
+server {
+	listen 80;
+	listen 443 ssl http2;
+
+	ssl_certificate      /etc/nginx/cert/etas-cn.com/server.crt;
+	ssl_certificate_key  /etc/nginx/cert/etas-cn.com/server.key;
+
+
+
+	root /var/www/etas;
+	index index.html index.htm index.php;
+
+	server_name etas-cn.com www.etas-cn.com;
+
+	include snippets/cloudflare-realip.conf;
+
+	error_log /var/log/nginx/etas-error.log;
+
+	location /proxy {
+		root /var/www/etas;
+	}
+
+	location / {
+
+                access_by_lua_file '/etc/nginx/lua/etas-proxy/access_by_lua_block-01.lua';
+
+		proxy_pass https://upstream_etas;
+
+		proxy_redirect          https://www.etas.com/ https://$http_host/;
+		#proxy_redirect          off;
+		proxy_set_header        Host "www.etas.com";
+		proxy_set_header        X-Real-IP $remote_addr;
+		proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+
+
+		proxy_set_header CF-Connecting-IP "";
+		proxy_set_header CF-IPCountry "";
+		proxy_set_header CF-Visitor "";
+		proxy_set_header CF-RAY "";
+	#	proxy_set_header X-Forwarded-For "";
+	#	proxy_set_header X-Forwarded-Proto "";
+
+		proxy_set_header        Referer "";
+
+		proxy_read_timeout      90;
+
+		#add_header Cross-Origin-Resource-Policy cross-origin;
+		add_header X-Cache-Status $upstream_cache_status;
+		add_header X-Robots-Tag "nofollow";
+
+		# Add extra js for var 
+                header_filter_by_lua_file '/etc/nginx/lua/etas-proxy/header_filter_by_lua_block-01.lua';
+                body_filter_by_lua_file '/etc/nginx/lua/etas-proxy/body_filter_by_lua_block-01.lua';
+
+	}
+
+	location ~ /\.ht {
+		deny all;
+	}
+}
+
+
+server {
+
+	listen 80;
+	listen 443 ssl http2;
+
+	ssl_certificate      /etc/nginx/cert/etas-cn.com/server.crt;
+	ssl_certificate_key  /etc/nginx/cert/etas-cn.com/server.key;
+
+
+
+	root /var/www/etas-license;
+	index index.html index.htm index.php;
+
+	server_name license.etas-cn.com;
+
+	include snippets/cloudflare-realip.conf;
+
+	error_log /var/log/nginx/etas-license-error.log;
+
+	location /proxy {
+		root /var/www/etas-license;
+	}
+
+	location / {
+
+                access_by_lua_file '/etc/nginx/lua/etas-proxy/access_by_lua_block-01.lua';
+
+		proxy_pass https://upstream_etas_license;
+
+
+		proxy_redirect          https://license.etas.com/ https://$http_host/;
+		#proxy_redirect          off;
+		proxy_set_header        Host "license.etas.com";
+		proxy_set_header        X-Real-IP $remote_addr;
+		proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+
+
+		proxy_set_header CF-Connecting-IP "";
+		proxy_set_header CF-IPCountry "";
+		proxy_set_header CF-Visitor "";
+		proxy_set_header CF-RAY "";
+	#	proxy_set_header X-Forwarded-For "";
+	#	proxy_set_header X-Forwarded-Proto "";
+
+		proxy_set_header        Referer "";
+
+		proxy_read_timeout      90;
+
+		#add_header Cross-Origin-Resource-Policy cross-origin;
+		add_header X-Cache-Status $upstream_cache_status;
+		add_header X-Robots-Tag "nofollow";
+
+		# Add extra js for var 
+                header_filter_by_lua_file '/etc/nginx/lua/etas-proxy/header_filter_by_lua_block-license-01.lua';
+                body_filter_by_lua_file '/etc/nginx/lua/etas-proxy/body_filter_by_lua_block-license-01.lua';
+
+	}
+
+	location ~ /\.ht {
+		deny all;
+	}
+}
+
